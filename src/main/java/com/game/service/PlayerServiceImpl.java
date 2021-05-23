@@ -21,8 +21,8 @@ public class PlayerServiceImpl implements PlayerService{
     }
 
     @Override
-    public boolean existsById(Long aLong) {
-        return repository.existsById(aLong);
+    public boolean existsById(Long id) {
+        return repository.existsById(id);
     }
 
     @Override
@@ -57,4 +57,16 @@ public class PlayerServiceImpl implements PlayerService{
     public void deletePlayerById(Long id) {
         repository.deleteById(id);
     }
+
+    @Override
+    public boolean isPlayerValid(Player player) {
+        return  player != null &&
+                Player.nameIsOk(player.getName()) &&
+                Player.titleIsOk(player.getTitle()) &&
+                Player.raceIsOk(player.getRace()) &&
+                Player.professionIsOk(player.getProfession()) &&
+                Player.birthdayIsOk(player.getBirthday()) &&
+                Player.experienceIsOk(player.getExperience());
+    }
+
 }

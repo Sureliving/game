@@ -16,9 +16,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-@Controller
+@RestController
 @RequestMapping("/rest")
 public class PlayerController {
 
@@ -30,47 +32,48 @@ public class PlayerController {
     }
 
     //getPlayers
-    @RequestMapping(value = "/rest/players", method = RequestMethod.GET)
+    @GetMapping(value = "/players")
     @ResponseBody
-    public ResponseEntity<List<Player>> getShips(@RequestParam(value = "name", required = false) String name,
-                                                 @RequestParam(value = "title", required = false) String title,
-                                                 @RequestParam(value = "race", required = false) Race race,
-                                                 @RequestParam(value = "profession", required = false) Profession profession,
-                                                 @RequestParam(value = "after", required = false) Long after,
-                                                 @RequestParam(value = "before", required = false) Long before,
-                                                 @RequestParam(value = "banned", required = false) Boolean banned,
-                                                 @RequestParam(value = "minExperience", required = false) Integer minExperience,
-                                                 @RequestParam(value = "maxExperience", required = false) Integer maxExperience,
-                                                 @RequestParam(value = "minLevel", required = false) Integer minLevel,
-                                                 @RequestParam(value = "maxLevel", required = false) Integer maxLevel,
-                                                 @RequestParam(value = "order", required = false, defaultValue = "ID") PlayerOrder order,
-                                                 @RequestParam(value = "pageNumber", required = false, defaultValue = "0") Integer pageNumber,
-                                                 @RequestParam(value = "pageSize", required = false, defaultValue = "3") Integer pageSize) {
+    public ResponseEntity<List<Player>> getPlayers(@RequestParam(value = "name", required = false) String name,
+                                                   @RequestParam(value = "title", required = false) String title,
+                                                   @RequestParam(value = "race", required = false) Race race,
+                                                   @RequestParam(value = "profession", required = false) Profession profession,
+                                                   @RequestParam(value = "after", required = false) Long after,
+                                                   @RequestParam(value = "before", required = false) Long before,
+                                                   @RequestParam(value = "banned", required = false) Boolean banned,
+                                                   @RequestParam(value = "minExperience", required = false) Integer minExperience,
+                                                   @RequestParam(value = "maxExperience", required = false) Integer maxExperience,
+                                                   @RequestParam(value = "minLevel", required = false) Integer minLevel,
+                                                   @RequestParam(value = "maxLevel", required = false) Integer maxLevel,
+                                                   @RequestParam(value = "order", required = false, defaultValue = "ID") PlayerOrder order,
+                                                   @RequestParam(value = "pageNumber", required = false, defaultValue = "0") Integer pageNumber,
+                                                   @RequestParam(value = "pageSize", required = false, defaultValue = "3") Integer pageSize) {
 
         Specification<Player> spec = getPlayerSpecificationBuilder(name, title, race, profession, after, before, banned, minExperience, maxExperience, minLevel, maxLevel).build();
         Page<Player> allPlayers = playerService.findAll(spec, PageRequest.of(pageNumber, pageSize, Sort.by(order.getFieldName())));
         return new ResponseEntity<>(allPlayers.getContent(), HttpStatus.OK);
 
     }
+
     //getCount
-    @RequestMapping(value = "/rest/players/count", method = RequestMethod.GET)
+    @GetMapping(value = "/players/count")
     @ResponseBody
-    public ResponseEntity<Long> getCount(   @RequestParam(value = "name", required = false) String name,
-                                            @RequestParam(value = "title", required = false) String title,
-                                            @RequestParam(value = "race", required = false) Race race,
-                                            @RequestParam(value = "profession", required = false) Profession profession,
-                                            @RequestParam(value = "after", required = false) Long after,
-                                            @RequestParam(value = "before", required = false) Long before,
-                                            @RequestParam(value = "banned", required = false) Boolean banned,
-                                            @RequestParam(value = "minExperience", required = false) Integer minExperience,
-                                            @RequestParam(value = "maxExperience", required = false) Integer maxExperience,
-                                            @RequestParam(value = "minLevel", required = false) Integer minLevel,
-                                            @RequestParam(value = "maxLevel", required = false) Integer maxLevel) {
+    public ResponseEntity<Long> getCount(@RequestParam(value = "name", required = false) String name,
+                                         @RequestParam(value = "title", required = false) String title,
+                                         @RequestParam(value = "race", required = false) Race race,
+                                         @RequestParam(value = "profession", required = false) Profession profession,
+                                         @RequestParam(value = "after", required = false) Long after,
+                                         @RequestParam(value = "before", required = false) Long before,
+                                         @RequestParam(value = "banned", required = false) Boolean banned,
+                                         @RequestParam(value = "minExperience", required = false) Integer minExperience,
+                                         @RequestParam(value = "maxExperience", required = false) Integer maxExperience,
+                                         @RequestParam(value = "minLevel", required = false) Integer minLevel,
+                                         @RequestParam(value = "maxLevel", required = false) Integer maxLevel) {
 
         Specification<Player> spec = getPlayerSpecificationBuilder(name, title, race, profession, after, before, banned, minExperience, maxExperience, minLevel, maxLevel).build();
         if (spec != null) {
             List<Player> players = playerService.findAll(spec);
-            return new ResponseEntity<>(Long.valueOf(players.size()), HttpStatus.OK);
+            return new ResponseEntity<>((long) players.size(), HttpStatus.OK);
         } else {
             return new ResponseEntity<>(playerService.size(), HttpStatus.OK);
         }
@@ -78,44 +81,99 @@ public class PlayerController {
     }
 
     //Create
-    @RequestMapping(value = "/rest/players", method = RequestMethod.POST)
+    @PostMapping(value = "/players")
     @ResponseBody
     public ResponseEntity<Player> createPlayer(@RequestBody Player player) {
         try {
-            if (player.getBirthday() != null) {
-                Calendar c = Calendar.getInstance();
-                c.setTimeInMillis(player.getBirthday());
-                int mYear = c.get(Calendar.YEAR);
+            if (playerService.isPlayerValid(player)) {
+                player.setBanned(player.getBanned());
+                player.setLevel(player.getExperience());
+                player.setUntilNextLevel(player.getExperience());
 
-                if (    player.getName() == null            ||
-                        player.getTitle() == null           ||
-                        player.getRace() == null            ||
-                        player.getProfession() == null      ||
-                        player.getExperience() == null      ||
-                        player.getName().length() > 12      ||
-                        player.getTitle().length() > 30     ||
-                        "".equals(player.getName())         ||
-                        player.getExperience() < 0          ||
-                        player.getExperience() > 10000000   ||
-                        player.getBirthday() < 0            ||
-                        mYear < 2000                        ||
-                        mYear > 3000                            )
-                {
-                    return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-                } else {
-                    player.setBanned(player.getBanned() != null && (player.getBanned()));
-                    Integer level = (int)((Math.sqrt(2500 + (200 * player.getExperience()))) - 50) / 100;
-                    player.setLevel(level);
-                    Integer untilNextLevel = 50 * (level + 1) * (level + 2) - player.getExperience();
-                    player.setUntilNextLevel(level);
-                    playerService.savePlayer(player);
-                    return new ResponseEntity<>(player, HttpStatus.OK);
-                }
+                playerService.savePlayer(player);
+
+                return new ResponseEntity<>(player, HttpStatus.OK);
             } else {
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
         } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @GetMapping(path = "/players/{id}")
+    public ResponseEntity<Player> getPlayer(@PathVariable(value = "id") String pathId) {
+        final Long id = convertIdToLong(pathId);
+        if (id == null || id <= 0) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } else if (!playerService.existsById(id)) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } else {
+            return new ResponseEntity<>(playerService.getPlayerById(id), HttpStatus.OK);
+        }
+    }
+
+    //Update
+    @PostMapping(value = "/players/{id}")
+    @ResponseBody
+    public ResponseEntity<Player> updatePlayer(@RequestBody Player player,
+                                               @PathVariable(value = "id") Long id) {
+
+        //final Long id = convertIdToLong(pathId);
+        if (id == 0 || !Player.idIsOk(id)) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } else if (!playerService.existsById(id)) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } else {
+            Player savedPlayer = playerService.getPlayerById(id);
+
+            String playerName = player.getName();
+            String playerTitle = player.getTitle();
+            Race playerRace = player.getRace();
+            Profession playerProfession = player.getProfession();
+            Long playerBirthday = player.getBirthday();
+            Boolean playerIsBanned = player.getBanned();
+            Integer playerExperience = player.getExperience();
+            if(     playerName != null ||
+                    playerTitle!= null ||
+                    playerRace != null ||
+                    playerProfession != null ||
+                    playerBirthday != null ||
+                    playerIsBanned != null ||
+                    playerExperience != null) {
+                if (playerName != null && Player.nameIsOk(playerName)) savedPlayer.setName(playerName);
+                if (playerTitle!= null && Player.titleIsOk(playerTitle)) savedPlayer.setTitle(playerTitle);
+                if (Player.raceIsOk(playerRace)) savedPlayer.setRace(playerRace);
+                if (Player.professionIsOk(playerProfession)) savedPlayer.setProfession(playerProfession);
+                if (Player.birthdayIsOk(playerBirthday)) {
+                    savedPlayer.setBirthday(playerBirthday);
+                } else if (playerBirthday != null) {
+                    return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+                }
+                if (playerIsBanned != null) savedPlayer.setBanned(playerIsBanned);
+                if (playerExperience != null && Player.experienceIsOk(playerExperience)) {
+                    savedPlayer.setExperience(playerExperience);
+                    savedPlayer.setLevel(playerExperience);
+                    savedPlayer.setUntilNextLevel(playerExperience);
+                } else if (playerExperience != null) {
+                    return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+                }
+                playerService.updatePlayer(savedPlayer);
+            }
+            return new ResponseEntity<>(savedPlayer, HttpStatus.OK);
+        }
+    }
+
+    @DeleteMapping(path = "/players/{id}")
+    public ResponseEntity<Player> deleteShip(@PathVariable(value = "id") Long id) {
+        //final Long id = convertIdToLong(pathId);
+        if (id == 0 || !Player.idIsOk(id)) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } else if (!playerService.existsById(id)) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } else {
+            playerService.deletePlayerById(id);
+            return new ResponseEntity<>(HttpStatus.OK);
         }
     }
 
@@ -151,7 +209,7 @@ public class PlayerController {
             builder.with("birthday", "<", before);
         }
         if (banned != null) {
-            builder.with("isUsed", ":", banned);
+            builder.with("banned", ":", banned);
         }
         if (minExperience != null) {
             builder.with("experience", ">", minExperience);
@@ -168,4 +226,16 @@ public class PlayerController {
         return builder;
     }
 
+
+    private Long convertIdToLong(String pathId) {
+        if (pathId == null || "0".equals(pathId)) {
+            return null;
+        } else {
+            try {
+                return Long.parseLong(pathId);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+    }
 }

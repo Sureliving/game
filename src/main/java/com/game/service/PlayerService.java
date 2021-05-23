@@ -25,5 +25,6 @@ public interface PlayerService {
 
     void deletePlayerById(Long id);
 
+    boolean isPlayerValid(Player player);
 }
 
